@@ -210,5 +210,15 @@ console.log('Presentation ready. Files: index.html — upload to GitHub reposito
 
 </script>
 
+<script>
+function filterTOC() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const items = document.querySelectorAll('#toc li');
+  items.forEach(li => {
+    const text = li.textContent.toLowerCase();
+    li.style.display = text.includes(search) ? '' : 'none';
+  });
+}
+</script>
 </body>
 </html>
