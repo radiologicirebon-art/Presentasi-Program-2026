@@ -9,16 +9,14 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
   <!-- Firebase -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
+  <script>
+    // Firebase SDK via CDN (non-module)
     const firebaseConfig = {
       databaseURL: "https://new-reexpertise2026-default-rtdb.asia-southeast1.firebasedatabase.app/"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
     /* ================= LOGIN ================= */
     window.currentRole = '';
@@ -117,6 +115,9 @@
     }
 
   </script>
+  <!-- Firebase CDN -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 
 <body class="bg-light">
