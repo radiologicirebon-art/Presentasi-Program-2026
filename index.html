@@ -10,111 +10,118 @@
 
   <!-- Firebase -->
   <script>
-    // Firebase SDK via CDN (non-module)
-    const firebaseConfig = {
-      databaseURL: "https://new-reexpertise2026-default-rtdb.asia-southeast1.firebasedatabase.app/"
-    };
+// ================= FIREBASE INIT =================
+const firebaseConfig = {
+  databaseURL: "https://new-reexpertise2026-default-rtdb.asia-southeast1.firebasedatabase.app/"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+// ================= GLOBAL ROLE =================
+let currentRole = '';
 
-    /* ================= LOGIN ================= */
-    window.currentRole = '';
-    window.enterApp = function () {
-      const role = document.getElementById('role').value;
-      if (!role) return alert('Pilih role');
-      window.currentRole = role;
-      document.getElementById('login').classList.add('d-none');
-      document.getElementById('app').classList.remove('d-none');
-      document.getElementById('roleLabel').innerText = role;
-    }
+// ================= LOGIN =================
+function enterApp() {
+  const roleSelect = document.getElementById('role');
+  const role = roleSelect.value;
+  if (!role) {
+    alert('Pilih role terlebih dahulu');
+    return;
+  }
+  currentRole = role;
+  document.getElementById('login').classList.add('d-none');
+  document.getElementById('app').classList.remove('d-none');
+  document.getElementById('roleLabel').innerText = role;
+}
 
-    /* ================= SUBMIT FORM ================= */
-    window.submitForm = function () {
-      const data = {
-        norm: norm.value,
-        pasien: pasien.value,
-        tanggal: tanggal.value,
-        modalitas: modalitas.value,
-        jenis: jenis.value,
-        alasan: alasan.value,
-        status: 'Belum',
-        jamMasuk: new Date().toISOString(),
-        jamSelesai: ''
-      };
-      if (!data.norm || !data.pasien) return alert('Lengkapi data');
-      push(ref(db, 'permohonan'), data);
-      document.getElementById('formRe').reset();
-    }
+// ================= SUBMIT FORM =================
+function submitForm() {
+  const data = {
+    norm: document.getElementById('norm').value,
+    pasien: document.getElementById('pasien').value,
+    tanggal: document.getElementById('tanggal').value,
+    modalitas: document.getElementById('modalitas').value,
+    jenis: document.getElementById('jenis').value,
+    alasan: document.getElementById('alasan').value,
+    status: 'Belum',
+    jamMasuk: new Date().toISOString(),
+    jamSelesai: ''
+  };
 
-    /* ================= REALTIME DASHBOARD ================= */
-    const table = document.getElementById('tbody');
-    const countBelum = document.getElementById('cBelum');
-    const countProses = document.getElementById('cProses');
-    const countSudah = document.getElementById('cSudah');
+  if (!data.norm || !data.pasien) {
+    alert('No RM dan Nama Pasien wajib diisi');
+    return;
+  }
 
-    onValue(ref(db, 'permohonan'), snap => {
-      table.innerHTML = '';
-      let b = 0, p = 0, s = 0;
-      let totalDurasi = 0;
-      let selesaiCount = 0;
+  db.ref('permohonan').push(data);
+  document.getElementById('formRe').reset();
+}
 
-      snap.forEach(child => {
-        const d = child.val();
-        if (d.status === 'Belum') b++;
-        if (d.status === 'Proses') p++;
-        if (d.status === 'Sudah') {
-          s++;
-          if (d.jamMasuk && d.jamSelesai) {
-            const masuk = new Date(d.jamMasuk);
-            const selesai = new Date(d.jamSelesai);
-            totalDurasi += (selesai - masuk) / 60000;
-            selesaiCount++;
-          }
-        }
+// ================= UPDATE STATUS =================
+function updateStatus(key) {
+  if (currentRole !== 'Dokter Spesialis Radiologi') {
+    alert('Hanya Dokter Spesialis Radiologi yang dapat mengubah status');
+    return;
+  }
 
-        const canUpdate = window.currentRole === 'Dokter Spesialis Radiologi' && d.status !== 'Sudah';
+  db.ref('permohonan/' + key).update({
+    status: 'Sudah',
+    jamSelesai: new Date().toISOString()
+  });
 
-        table.innerHTML += `
-          <tr>
-            <td>${d.norm}</td>
-            <td>${d.pasien}</td>
-            <td>${d.modalitas}</td>
-            <td>${d.tanggal}</td>
-            <td>
-              <span class="badge bg-${d.status==='Belum'?'warning':d.status==='Proses'?'primary':'success'}">${d.status}</span>
-            </td>
-            <td>
-              ${canUpdate ? `<button class='btn btn-sm btn-outline-primary' onclick="updateStatus('${child.key}')">Selesai</button>` : '-'}
-            </td>
-          </tr>`;
-      });
+  window.open(
+    'https://wa.me/6285156868857?text=Hasil%20re-expertise%20radiologi%20telah%20selesai',
+    '_blank'
+  );
+}
 
-      countBelum.innerText = b;
-      countProses.innerText = p;
-      countSudah.innerText = s;
+// ================= REALTIME DASHBOARD =================
+const tbody = document.getElementById('tbody');
+const cBelum = document.getElementById('cBelum');
+const cProses = document.getElementById('cProses');
+const cSudah = document.getElementById('cSudah');
+const avgTime = document.getElementById('avgTime');
 
-      document.getElementById('avgTime').innerText = selesaiCount > 0
-        ? Math.round(totalDurasi / selesaiCount) + ' menit'
-        : '0 menit';
-    });
-    });
+db.ref('permohonan').on('value', snapshot => {
+  tbody.innerHTML = '';
+  let b = 0, p = 0, s = 0;
+  let totalDurasi = 0;
+  let selesaiCount = 0;
 
-    window.updateStatus = function (key) {
-      if (window.currentRole !== 'Dokter Spesialis Radiologi') {
-        alert('Hanya Radiolog yang dapat mengubah status');
-        return;
+  snapshot.forEach(child => {
+    const d = child.val();
+
+    if (d.status === 'Belum') b++;
+    if (d.status === 'Proses') p++;
+    if (d.status === 'Sudah') {
+      s++;
+      if (d.jamMasuk && d.jamSelesai) {
+        const masuk = new Date(d.jamMasuk);
+        const selesai = new Date(d.jamSelesai);
+        totalDurasi += (selesai - masuk) / 60000;
+        selesaiCount++;
       }
-      const r = ref(db, 'permohonan/' + key);
-      update(r, {
-        status: 'Sudah',
-        jamSelesai: new Date().toISOString()
-      });
-      window.open('https://wa.me/6285156868857?text=Hasil%20re-expertise%20radiologi%20telah%20selesai', '_blank');
-    });
     }
 
-  </script>
+    const canUpdate = currentRole === 'Dokter Spesialis Radiologi' && d.status !== 'Sudah';
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${d.norm}</td>
+        <td>${d.pasien}</td>
+        <td>${d.modalitas}</td>
+        <td>${d.tanggal}</td>
+        <td><span class="badge bg-${d.status==='Belum'?'warning':d.status==='Proses'?'primary':'success'}">${d.status}</span></td>
+        <td>${canUpdate ? `<button class="btn btn-sm btn-outline-primary" onclick="updateStatus('${child.key}')">Selesai</button>` : '-'}</td>
+      </tr>`;
+  });
+
+  cBelum.innerText = b;
+  cProses.innerText = p;
+  cSudah.innerText = s;
+  avgTime.innerText = selesaiCount > 0 ? Math.round(totalDurasi / selesaiCount) + ' menit' : '0 menit';
+});
+</script>
   <!-- Firebase CDN -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
