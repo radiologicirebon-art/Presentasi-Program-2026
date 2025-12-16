@@ -60,21 +60,28 @@
 
   <!-- DASHBOARD -->
   <div class="row mb-3">
-    <div class="col"><div class="card text-center"><div class="card-body">🟡 Belum<br><h3 id="cBelum">0</h3></div></div></div>
-    <div class="col"><div class="card text-center"><div class="card-body">🟢 Sudah<br><h3 id="cSudah">0</h3></div></div></div>
-    <div class="col"><div class="card text-center"><div class="card-body">⏱️ Rata-rata<br><h3 id="avgTime">0 menit</h3></div></div></div>
+    <div class="col">
+      <div class="card text-center"><div class="card-body">🟡 Belum<br><h3 id="cBelum">0</h3></div></div>
+    </div>
+    <div class="col">
+      <div class="card text-center"><div class="card-body">🟢 Sudah<br><h3 id="cSudah">0</h3></div></div>
+    </div>
+    <div class="col">
+      <div class="card text-center"><div class="card-body">⏱️ Rata-rata<br><h3 id="avgTime">0 menit</h3></div></div>
+    </div>
   </div>
 
   <!-- TABLE -->
   <table class="table table-bordered table-sm bg-white">
-    <thead class="table-light">
+    <thead class="table-light text-center align-middle">
       <tr>
         <th>No RM</th>
         <th>Pasien</th>
         <th>Modalitas</th>
+        <th>Permohonan<br>Re-Expertise</th>
         <th>Tanggal</th>
         <th>Status</th>
-        <th>Aksi</th>
+        <th style="width:90px">Aksi</th>
       </tr>
     </thead>
     <tbody id="tbody"></tbody>
@@ -82,13 +89,13 @@
 </div>
 
 <script>
-/* ================= FIREBASE ================= */
+/* ===== FIREBASE ===== */
 firebase.initializeApp({
   databaseURL: "https://new-reexpertise2026-default-rtdb.asia-southeast1.firebasedatabase.app/"
 });
 var db = firebase.database();
 
-/* ================= LOGIN ================= */
+/* ===== LOGIN ===== */
 function enterApp() {
   var role = document.getElementById("role").value;
   if (!role) return alert("Pilih role");
@@ -101,7 +108,7 @@ function enterApp() {
   loadRealtime();
 }
 
-/* ================= SUBMIT ================= */
+/* ===== SUBMIT ===== */
 function submitForm() {
   db.ref("permohonan").push({
     norm: norm.value,
@@ -117,7 +124,7 @@ function submitForm() {
   formRe.reset();
 }
 
-/* ================= UPDATE STATUS ================= */
+/* ===== UPDATE STATUS ===== */
 function updateStatus(key) {
   if (localStorage.getItem("role") !== "Dokter Spesialis Radiologi")
     return alert("Akses ditolak");
@@ -127,10 +134,13 @@ function updateStatus(key) {
     jamSelesai: new Date().toISOString()
   });
 
-  window.open("https://wa.me/6285156868857?text=Hasil%20re-expertise%20radiologi%20telah%20selesai");
+  window.open(
+    "https://wa.me/6285156868857?text=Hasil%20re-expertise%20radiologi%20telah%20selesai",
+    "_blank"
+  );
 }
 
-/* ================= REALTIME ================= */
+/* ===== REALTIME ===== */
 function loadRealtime() {
   db.ref("permohonan").on("value", snap => {
     tbody.innerHTML = "";
@@ -138,6 +148,7 @@ function loadRealtime() {
 
     snap.forEach(c => {
       let d = c.val();
+
       if (d.status === "Belum") b++;
       if (d.status === "Sudah" && d.jamSelesai) {
         s++;
@@ -152,9 +163,18 @@ function loadRealtime() {
           <td>${d.norm}</td>
           <td>${d.pasien}</td>
           <td>${d.modalitas}</td>
+          <td>
+            <strong>${d.jenis || "-"}</strong><br>
+            <small class="text-muted">${d.alasan || "-"}</small>
+          </td>
           <td>${d.tanggal}</td>
           <td>${d.status}</td>
-          <td>${can ? `<button class="btn btn-success btn-sm" onclick="updateStatus('${c.key}')">Selesai</button>` : "-"}</td>
+          <td>
+            ${can
+              ? `<button class="btn btn-success btn-sm" onclick="updateStatus('${c.key}')">Selesai</button>`
+              : "-"
+            }
+          </td>
         </tr>`;
     });
 
