@@ -5,16 +5,16 @@
   <title>Radiologi | Permohonan Re-Expertise</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-  <!-- Firebase CDN v8 (WAJIB sebelum script utama) -->
+  <!-- Firebase v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
+
 <body class="bg-light">
 
-<!-- ================= LOGIN ================= -->
+<!-- LOGIN -->
 <div id="login" class="container mt-5">
   <div class="card shadow col-md-6 mx-auto">
     <div class="card-body">
@@ -29,7 +29,7 @@
   </div>
 </div>
 
-<!-- ================= APP ================= -->
+<!-- APP -->
 <div id="app" class="container d-none mt-4">
   <h5>Role: <span id="roleLabel"></span></h5>
 
@@ -58,7 +58,7 @@
     </div>
   </div>
 
-  <!-- DASHBOARD CARD -->
+  <!-- DASHBOARD -->
   <div class="row mb-3">
     <div class="col"><div class="card text-center"><div class="card-body">🟡 Belum<br><h3 id="cBelum">0</h3></div></div></div>
     <div class="col"><div class="card text-center"><div class="card-body">🟢 Sudah<br><h3 id="cSudah">0</h3></div></div></div>
@@ -81,113 +81,88 @@
   </table>
 </div>
 
-<!-- ================= SCRIPT UTAMA ================= -->
 <script>
-// FIREBASE INIT
-var firebaseConfig = {
+/* ================= FIREBASE ================= */
+firebase.initializeApp({
   databaseURL: "https://new-reexpertise2026-default-rtdb.asia-southeast1.firebasedatabase.app/"
-};
-firebase.initializeApp(firebaseConfig);
+});
 var db = firebase.database();
 
-// GLOBAL
-var currentRole = "";
-
-// LOGIN
+/* ================= LOGIN ================= */
 function enterApp() {
   var role = document.getElementById("role").value;
-  if (!role) {
-    alert("Pilih role terlebih dahulu");
-    return;
-  }
-  currentRole = role;
+  if (!role) return alert("Pilih role");
+
+  localStorage.setItem("role", role);
   document.getElementById("login").classList.add("d-none");
   document.getElementById("app").classList.remove("d-none");
   document.getElementById("roleLabel").innerText = role;
+
+  loadRealtime();
 }
 
-// SUBMIT FORM
+/* ================= SUBMIT ================= */
 function submitForm() {
-  var data = {
-    norm: document.getElementById("norm").value,
-    pasien: document.getElementById("pasien").value,
-    tanggal: document.getElementById("tanggal").value,
-    modalitas: document.getElementById("modalitas").value,
-    jenis: document.getElementById("jenis").value,
-    alasan: document.getElementById("alasan").value,
+  db.ref("permohonan").push({
+    norm: norm.value,
+    pasien: pasien.value,
+    tanggal: tanggal.value,
+    modalitas: modalitas.value,
+    jenis: jenis.value,
+    alasan: alasan.value,
     status: "Belum",
     jamMasuk: new Date().toISOString(),
     jamSelesai: ""
-  };
-
-  if (!data.norm || !data.pasien) {
-    alert("No RM dan Nama Pasien wajib diisi");
-    return;
-  }
-
-  db.ref("permohonan").push(data);
-  document.getElementById("formRe").reset();
+  });
+  formRe.reset();
 }
 
-// UPDATE STATUS
+/* ================= UPDATE STATUS ================= */
 function updateStatus(key) {
-  if (currentRole !== "Dokter Spesialis Radiologi") {
-    alert("Hanya Dokter Spesialis Radiologi yang dapat mengubah status");
-    return;
-  }
+  if (localStorage.getItem("role") !== "Dokter Spesialis Radiologi")
+    return alert("Akses ditolak");
 
   db.ref("permohonan/" + key).update({
     status: "Sudah",
     jamSelesai: new Date().toISOString()
   });
 
-  window.open(
-    "https://wa.me/6285156868857?text=Hasil%20re-expertise%20radiologi%20telah%20selesai",
-    "_blank"
-  );
+  window.open("https://wa.me/6285156868857?text=Hasil%20re-expertise%20radiologi%20telah%20selesai");
 }
 
-// REALTIME DASHBOARD
-var tbody = document.getElementById("tbody");
-var cBelum = document.getElementById("cBelum");
-var cSudah = document.getElementById("cSudah");
-var avgTime = document.getElementById("avgTime");
+/* ================= REALTIME ================= */
+function loadRealtime() {
+  db.ref("permohonan").on("value", snap => {
+    tbody.innerHTML = "";
+    let b = 0, s = 0, total = 0, cnt = 0;
 
-db.ref("permohonan").on("value", function(snapshot) {
-  tbody.innerHTML = "";
-  var b = 0, s = 0;
-  var totalDurasi = 0;
-  var selesaiCount = 0;
-
-  snapshot.forEach(function(child) {
-    var d = child.val();
-    if (d.status === "Belum") b++;
-    if (d.status === "Sudah") {
-      s++;
-      if (d.jamMasuk && d.jamSelesai) {
-        var masuk = new Date(d.jamMasuk);
-        var selesai = new Date(d.jamSelesai);
-        totalDurasi += (selesai - masuk) / 60000;
-        selesaiCount++;
+    snap.forEach(c => {
+      let d = c.val();
+      if (d.status === "Belum") b++;
+      if (d.status === "Sudah" && d.jamSelesai) {
+        s++;
+        total += (new Date(d.jamSelesai) - new Date(d.jamMasuk)) / 60000;
+        cnt++;
       }
-    }
 
-    var canUpdate = currentRole === "Dokter Spesialis Radiologi" && d.status !== "Sudah";
+      let can = localStorage.getItem("role") === "Dokter Spesialis Radiologi" && d.status !== "Sudah";
 
-    tbody.innerHTML += "<tr>" +
-      "<td>" + d.norm + "</td>" +
-      "<td>" + d.pasien + "</td>" +
-      "<td>" + d.modalitas + "</td>" +
-      "<td>" + d.tanggal + "</td>" +
-      "<td>" + d.status + "</td>" +
-      "<td>" + (canUpdate ? "<button class='btn btn-sm btn-outline-primary' onclick=\"updateStatus('" + child.key + "')\">Selesai</button>" : "-") + "</td>" +
-    "</tr>";
+      tbody.innerHTML += `
+        <tr>
+          <td>${d.norm}</td>
+          <td>${d.pasien}</td>
+          <td>${d.modalitas}</td>
+          <td>${d.tanggal}</td>
+          <td>${d.status}</td>
+          <td>${can ? `<button class="btn btn-success btn-sm" onclick="updateStatus('${c.key}')">Selesai</button>` : "-"}</td>
+        </tr>`;
+    });
+
+    cBelum.innerText = b;
+    cSudah.innerText = s;
+    avgTime.innerText = cnt ? Math.round(total / cnt) + " menit" : "0 menit";
   });
-
-  cBelum.innerText = b;
-  cSudah.innerText = s;
-  avgTime.innerText = selesaiCount > 0 ? Math.round(totalDurasi / selesaiCount) + " menit" : "0 menit";
-});
+}
 </script>
 
 </body>
